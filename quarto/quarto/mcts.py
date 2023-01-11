@@ -93,13 +93,6 @@ class MCTS(Player):
         node.children[chosen_move] = hash(CurrState)
         return self.explore(CurrState)
 
-            
-            
-            
-                    
-    #def select_node(self,state:)               
-                    
-                    
     
     def roll_out_place_piece(self,state:Quarto, Random_player : classmethod )-> int : 
         state.set_players(Random_player(),Random_player())
