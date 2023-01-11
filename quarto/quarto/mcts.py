@@ -1,3 +1,4 @@
+import time 
 from objects import Quarto, Player
 from copy import deepcopy
 from math import sqrt, log
@@ -25,7 +26,7 @@ def get_available_positions(state: Quarto)->list:
                 moves.append((i,j))     
     return moves            
 
-class Node : 
+class Node: 
     
     def __init__(self,state : Quarto, phase : bool , player_turn : bool  ) -> None:
         self.state = state
@@ -143,34 +144,48 @@ class MCTS(Player):
             self.states[history_step] +=1
         self.walked = set()
                        
-    def iterate(self,state: Quarto, phase: bool)-> None : 
-
+    def iterate(self,state: Quarto, phase: bool, time_limit : int)-> None : 
+        start_time = time.process_time()
+        num_rollouts = 0
         LOG.debug(f"New iteration from state {state}")
         # LOG.debug(f" * States: {self.states}")
         LOG.debug(f" * Nb States: {len(self.states)}")
-        if hash(state) not in self.states: 
-            self.expand(state,phase) 
-        explored_state = self.explore(state)
-        self.expand(explored_state)
-        if phase : 
-            outcome = self.roll_out_choose_piece(explored_state, RandomPlayer)
-        else : 
-            outcome = self.roll_out_place_piece(explored_state , RandomPlayer)
-        self.update(outcome)
+        while time.process_time() - start_time < time_limit: 
+            if hash(state) not in self.states: 
+                self.expand(state,phase) 
+            explored_state = self.explore(state)
+            self.expand(explored_state)
+            if phase : 
+                outcome = self.roll_out_choose_piece(explored_state, RandomPlayer)
+            else : 
+                outcome = self.roll_out_place_piece(explored_state , RandomPlayer)
+            self.update(outcome)
+            num_rollouts+= 1 
+        self.run_time = time.process_time() - start_time 
+        self.num_rollouts = num_rollouts
         
-            
+    
+    def choose_best_move(self,state : Quarto):    
+            pass 
+        
 
-    def choose_piece(self,state : Quarto)-> int: 
+    def choose_piece(self,state : Quarto,time_limit : int)-> int: 
             phase = True 
             player = False
-            self.iterate(state,phase,player)   
+            self.iterate(state,phase,player,time_limit )   
             
-
 
     
           
-    def place_piece(self)->tuple[int,int] :
-        pass
+    def place_piece(self, state: Quarto , time_limit : int)->tuple[int,int] :
+        phase = False 
+        player = False 
+        self.itetrate(state,phase , player, time_limit)
+        
+        
+    
+    def statistics(self) -> tuple: 
+        return self.num_rollouts , self.run_time 
         
         
         
