@@ -5,7 +5,7 @@ import logging
 import argparse
 import random
 import quarto
-
+from quarto import Myplayer
 
 class RandomPlayer(quarto.Player):
     """Random player"""
@@ -22,7 +22,8 @@ class RandomPlayer(quarto.Player):
 
 def main():
     game = quarto.Quarto()
-    game.set_players((RandomPlayer(game), RandomPlayer(game)))
+    mcts = Myplayer.MCTS
+    game.set_players((mcts(game), RandomPlayer(game)))
     winner = game.run()
     logging.warning(f"main: Winner: player {winner}")
 
