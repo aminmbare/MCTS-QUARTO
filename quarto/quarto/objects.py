@@ -64,7 +64,7 @@ class Quarto(object):
         self.__pieces.append(Piece(True, True, True, False))  # 14
         self.__pieces.append(Piece(True, True, True, True))  # 15
         self.__current_player = 0
-        self.__selected_piece_index = -1
+        self.selected_piece_index = -1
 
     def set_players(self, players: tuple[Player, Player]):
         self.__players = players

@@ -81,8 +81,10 @@ class MCTS(Player):
                     CurrState.place(*move)
                 else :   
                     CurrState.select(move)
+                    piece = move 
+                    print(CurrState.__selected_piece_index)
                 player, phase = self.get_player_and_phase(player, phase)
-                new_hash = self.hashing(CurrState, player, phase)
+                new_hash = self.hashing(CurrState, player, phase,move,piece)
                 node.children[move] = new_hash
                 return CurrState,player ,phase
             game_node = self.states_to_nodes[game_hash]
@@ -102,24 +104,25 @@ class MCTS(Player):
         return self.explore(CurrState,player, not phase)
 
     
-    def roll_out_place_piece(self,state:Quarto, Random_player : classmethod )-> int : 
+    def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod, turn : int )-> int : 
         player = Random_player(state)
-        winner = -1
+        #winner = -1
         while  not state.check_finished():
             piece_ok = False
             while not piece_ok:
-                piece_ok = state.select(player.choose_piece())
+                piece_ok = state.select()
             piece_ok = False
+            turn =  1 - turn 
             while not piece_ok:
                 x, y = player.place_piece()
                 piece_ok = state.place(x, y)
             winner = state.check_winner()
             if winner != -1 : 
                  break     
-        return winner  
+        return turn
     
     
-    def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod )-> int : 
+    def roll_out_place_piece(self,state:Quarto, Random_player : classmethod, turn : int  )-> int : 
         player = Random_player(state)
         #winner = -1
         while  not state.check_finished():
@@ -133,7 +136,8 @@ class MCTS(Player):
             piece_ok = False
             while not piece_ok:
                 piece_ok = state.select(player.choose_piece())
-        return winner     
+            turn = 1 - turn 
+        return  player     
     def expand(self,state : Quarto , phase : bool, player: bool) -> None: 
         LOG.debug(f"Expanding state {state}")
         
@@ -143,7 +147,7 @@ class MCTS(Player):
                 
     def update(self,outcome: int )-> None:
         for history_step in self.history: 
-            if outcome == 1 : 
+            if outcome == 0 : 
                 self.states_to_nodes[history_step].Q +=1 
             self.states_to_nodes[history_step].N +=1
         self.walked = set()
@@ -156,17 +160,17 @@ class MCTS(Player):
         # LOG.debug(f" * States: {self.states_to_nodes}")
         LOG.debug(f" * Nb States: {len(self.states_to_nodes)}")
         while time.process_time() - start_time < self.time_limit: 
-            if self.hashing(state,player,phase) not in self.states_to_nodes: 
+            if self.hashing(state,player,phase,state.__selected_piece_index) not in self.states_to_nodes: 
                 self.expand(state,phase,player)   
             
             #player , phase  = self.get_player_and_phase(player, phase)    
             explored_state,new_player ,new_phase = self.explore(state,player, phase)    
             self.expand(explored_state,new_phase,new_player)
             print(explored_state.get_board_status())
-            if phase :       
-                outcome = self.roll_out_choose_piece(explored_state, RandomPlayer)
+            if new_phase :       
+                outcome = self.roll_out_choose_piece(explored_state, RandomPlayer,1-int(new_player))
             else : 
-                outcome = self.roll_out_place_piece(explored_state , RandomPlayer)
+                outcome = self.roll_out_place_piece(explored_state , RandomPlayer,1-int(new_player))
             self.update(outcome)
             num_rollouts+= 1 
         self.run_time = time.process_time() - start_time 
@@ -176,9 +180,12 @@ class MCTS(Player):
         return player ^ phase ,not  phase 
         
     @staticmethod 
-    def hashing(state, player , phase) : 
-       
-        code =  ( str(state.get_board_status()) ,str(player) ,str(phase))
+    def hashing(state: Quarto, player : bool , phase : bool , piece : int) : 
+        if  not phase : 
+            code =  (str(state.get_board_status()) ,str(player) ,str(phase))
+        else : 
+            code = (str(state.get_board_status()) ,str(player) ,str(phase),str(piece))
+        
         return hash("#".join(code))
     
     def choose_best_move(self,state : Quarto, phase : bool):    
