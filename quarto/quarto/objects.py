@@ -83,7 +83,7 @@ class Quarto(object):
         select a piece. Returns True on success
         '''
         if pieceIndex not in self.__board:
-            self.__selected_piece_index = pieceIndex
+            self.selected_piece_index = pieceIndex
             return True
         return False
 
@@ -92,7 +92,7 @@ class Quarto(object):
         Place piece in coordinates (x, y). Returns true on success
         '''
         if self.__placeable(x, y):
-            self.__board[y, x] = self.__selected_piece_index
+            self.__board[y, x] = self.selected_piece_index
             return True
         return False
 
@@ -109,7 +109,7 @@ class Quarto(object):
             for element in row:
                 print(f" {element: >2}", end=" |")
         print("\n -------------------\n")
-        print(f"Selected piece: {self.__selected_piece_index}\n")
+        print(f"Selected piece: {self.selected_piece_index}\n")
 
     def get_piece_charachteristics(self, index: int) -> Piece:
         '''
@@ -127,7 +127,7 @@ class Quarto(object):
         '''
         Get index of selected piece
         '''
-        return copy.deepcopy(self.__selected_piece_index)
+        return copy.deepcopy(self.selected_piece_index)
 
     def __check_horizontal(self) -> int:
         for i in range(self.BOARD_SIDE):
