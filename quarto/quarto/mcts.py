@@ -63,7 +63,7 @@ class MCTS(Player):
     def explore(self, state: Quarto): 
         LOG.debug(f"exploring from state {state}")
         
-        if state.check_finished() : 
+        if state.check_finished(): 
             LOG.debug("game is over")
         CurrState = deepcopy(state)   
         ucb = dict()
@@ -71,11 +71,11 @@ class MCTS(Player):
         self.walked.add(state_hash)
         node = self.states[state_hash]
         for move , game_hash in node.children.items(): 
-            if game_hash is None :
+            if game_hash is None : 
                 LOG.debug(f"Unexplored node found for action {move}")
                 if type(move) is tuple : 
                     CurrState.place(*move)
-                else : 
+                else :   
                     CurrState.select(move)
                 new_hash = hash(state)
                 node.children[move] = new_hash
@@ -130,7 +130,7 @@ class MCTS(Player):
             while not piece_ok:
                 piece_ok = state.select(state.__players[state.__current_player].choose_piece())
         return winner     
-    def expand(self,state : Quarto , phase : bool, player_turn : bool) -> None: 
+    def expand(self,state : Quarto , phase : bool, player, player_turn : bool) -> None: 
         LOG.debug(f"Expanding state {state}")
         
         state_hash = hash(state) 
@@ -144,18 +144,22 @@ class MCTS(Player):
             self.states[history_step] +=1
         self.walked = set()
                        
-    def iterate(self,state: Quarto, phase: bool, time_limit : int)-> None : 
+    def iterate(self,state: Quarto, phase: bool, player : bool, time_limit : int)-> None : 
         start_time = time.process_time()
         num_rollouts = 0
+        
         LOG.debug(f"New iteration from state {state}")
         # LOG.debug(f" * States: {self.states}")
         LOG.debug(f" * Nb States: {len(self.states)}")
         while time.process_time() - start_time < time_limit: 
             if hash(state) not in self.states: 
-                self.expand(state,phase) 
-            explored_state = self.explore(state)
-            self.expand(explored_state)
-            if phase : 
+                self.expand(state,phase,player)   
+            
+            player = phase ^ player   
+            phase  = not phase     
+            explored_state  = self.explore(state)    
+            self.expand(explored_state,phase,player)
+            if phase :       
                 outcome = self.roll_out_choose_piece(explored_state, RandomPlayer)
             else : 
                 outcome = self.roll_out_place_piece(explored_state , RandomPlayer)
@@ -166,26 +170,43 @@ class MCTS(Player):
         
     
     def choose_best_move(self,state : Quarto):    
-            pass 
+        scores = dict()
+        state_hash = hash(state)
+        node = self.states[state_hash]
+        for move , state_node_hash in node.children.items(): 
+            if state_node_hash is None : 
+                LOG.debug(f"unexplored move {move}")
+                continue 
+            state_node = self.states[state_node_hash]
+            Q = state_node.Q 
+            N = state_node.N 
+            win_ratio = Q/N 
+            scores[move] = win_ratio
+        LOG.debug(f"Actions : {scores}")
+        return max(scores , key = lambda k : scores[k])
         
 
     def choose_piece(self,state : Quarto,time_limit : int)-> int: 
-            phase = True 
-            player = False
-            self.iterate(state,phase,player,time_limit )   
-            
+        phase = True 
+        player = True
+        self.iterate(state,phase,player,time_limit,) 
+        LOG.debug(f"states : {self.states}")
+        LOG.debug(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
+        return   self.choose_best_move(state)  
+        
 
-    
           
     def place_piece(self, state: Quarto , time_limit : int)->tuple[int,int] :
         phase = False 
-        player = False 
+        player = True 
         self.itetrate(state,phase , player, time_limit)
-        
+        LOG.debug(f"states : {self.states}")
+        LOG.debug(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
+        return   self.choose_best_move(state)      
         
     
-    def statistics(self) -> tuple: 
-        return self.num_rollouts , self.run_time 
+    #def statistics(self) -> tuple: 
+    #    return self.num_rollouts , self.run_time 
         
         
         
