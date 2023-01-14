@@ -82,6 +82,7 @@ class Quarto(object):
         '''
         select a piece. Returns True on success
         '''
+        #print(self.__board)
         if pieceIndex not in self.__board:
             self.selected_piece_index = pieceIndex
             return True
