@@ -16,7 +16,7 @@ class Node:
         self.children = {}
         self.outcome = GameMeta.PLAYERS['none']
 
-    def add_children(self, children: dict) -> None:
+    def add_children(self, children: list) -> None:
         for child in children:
             self.children[child.move] = child
 

@@ -4,19 +4,28 @@ from copy import deepcopy
 from math import sqrt, log
 import numpy as np
 import logging
-from main import RandomPlayer
 import random
-
-
-LOG = logging.getLogger(__name__)
+from functools import cache , lru_cache
+from quarto.gx_utils import PriorityQueue
 C = sqrt(2)
     
+class RandomPlayer(Player):
+    """Random player"""
+
+    def __init__(self, quarto: Quarto) -> None:
+        super().__init__(quarto)
+
+    def choose_piece(self) -> int:
+        return random.randint(0, 15)
+
+    def place_piece(self) -> tuple[int, int]:
+        return random.randint(0, 3), random.randint(0, 3)
 def get_available_pieces(state:Quarto)->set:
     pieces = set(range(16))
     pieces_on_board = set()
     for row in state.get_board_status(): 
         for element in row : 
-            if element != 0 : 
+            if element != -1 : 
                 pieces_on_board.add(element)
     return pieces - pieces_on_board
 
@@ -26,19 +35,7 @@ def get_available_positions(state: Quarto)->list:
         for j,element in enumerate(row): 
             if element == -1 : 
                 moves.append((i,j))     
-    return moves   
-
-class RandomPlayer(Player):
-    """Random player"""
-
-    def __init__(self, quarto:Quarto) -> None:
-        super().__init__(quarto)
-
-    def choose_piece(self,available_pieces : list ) -> int:
-        return random.choice(available_pieces)
-
-    def place_piece(self,available_positions : list ) -> tuple[int, int]:
-        return random.choice(available_positions)      
+    return moves            
 
 class Node: 
     ''' Two types of nodes 
@@ -74,28 +71,27 @@ class MCTS(Player):
         #self.phase = True  ##  True : selection , False : placing
 
     @staticmethod
-    def compute_ucb(w:int,n: int , N: int,player : bool)-> float : 
-        if player :
+    def compute_ucb(w:int,n: int , N: int)-> float : 
           return w/n +C *sqrt(log(N)/n)
-        else : 
-            return 1-w/n
 
+        
     def explore(self, state: Quarto,player: bool , phase : bool,piece : int): 
         
-        LOG.debug(f"exploring from state {state}")      
-        if state.check_finished(): 
-            LOG.debug("game is over")
+        CurrState = deepcopy(state)
+        logging.debug(f"exploring from state {state}")      
+        if CurrState.check_finished(): 
+            logging.debug("game is over")
+            return state, player , phase , piece
         #state = deepcopy(state)   
         ucb = dict()
 
-        state_hash = self.hashing(state,player, phase,piece)
+        state_hash = self.hashing(CurrState,player, phase,piece)
         self.history.add(state_hash)
 
         node = self.states_to_nodes[state_hash]
-        CurrState = deepcopy(state)
         for move , game_hash in node.children.items(): 
             if game_hash is None : 
-                LOG.debug(f"Unexplored node found for action {move}")
+                logging.debug(f"Unexplored node found for action {move}")
                 if type(move) is tuple : 
                     CurrState.place(*move)
                 else :   
@@ -111,7 +107,7 @@ class MCTS(Player):
             N = node.N
             turn = game_node.player_turn
 
-            ucb[move] = self.compute_ucb(w,n,N,player)
+            ucb[move] = self.compute_ucb(w,n,N)
             
         chosen_move = max(ucb,key = lambda k : ucb[k])
         if type(move) is tuple : 
@@ -124,79 +120,80 @@ class MCTS(Player):
         return self.explore(CurrState,turn, not phase,piece)
 
     
-    def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod, turn : int )-> int : 
+            
+            
+            
+    def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod)-> int : 
+        logging.debug(f"roll_out choose piece")
         player = Random_player(state)
-        #winner = -1
-        available_pieces = set(range(16))
-        available_positions = set([ (x,y) for x in range(4) for y in range(4) ])
-        while  not state.check_finished():
+        winner = -1
+        turn = 0
+        #available_pieces = get_available_pieces(state)
+        #available_positions = get_available_positions(state)
+        while winner < 0 and  not state.check_finished():
             piece_ok = False
             while not piece_ok:
-                piece =  player.choose_piece(list(available_pieces))
-                piece_ok = state.select(piece)
-            available_pieces = available_pieces - set((piece,))
+                piece_ok = state.select(player.choose_piece())
             piece_ok = False
             turn =  1 - turn 
             while not piece_ok:
-                chosen_position = player.place_piece(list(available_positions))
-                piece_ok = state.place(*chosen_position)
-            available_positions = available_positions - set((chosen_position,))
+                x, y = player.place_piece()
+                piece_ok = state.place(x, y)
             winner = state.check_winner()
             if winner != -1 : 
-                 break     
-            print(state.check_finished())
-        return turn
+                winner = turn 
+                break     
+
+        return winner
+        
     
     
-    def roll_out_place_piece(self,state:Quarto, Random_player : classmethod, turn : int  )-> int : 
+    def roll_out_place_piece(self,state:Quarto, Random_player : classmethod)-> int : 
+        logging.debug(f"roll_out place piece")
         player = Random_player(state)
-        #winner = -1
-        available_pieces = set(range(16))
-        available_positions = set([ (x,y) for x in range(4) for y in range(4) ])
-        while  not state.check_finished():
+        winner = -1
+        turn = 0 
+        while winner < 0 and  not state.check_finished():
             piece_ok = False
             while not piece_ok:
-                chosen_position = player.place_piece(list(available_positions))
-                piece_ok = state.place(*chosen_position)
-
-            available_positions = available_positions - set((chosen_position,))
+                x, y = player.place_piece()
+                piece_ok = state.place(x, y)
             winner = state.check_winner() 
-            print(state.get_board_status())
-            if winner != -1 or not state.check_finished():                  
-                 break     
+            if winner != -1 :                  
+                 winner = turn
+                 break 
+            if state.check_finished():    
+                break
             piece_ok = False
             while not piece_ok:
-                piece = player.choose_piece(list(available_pieces))
-                piece_ok = state.select(piece)
-
-            piece 
-            available_pieces = available_pieces - set((piece,))
+                piece_ok = state.select(player.choose_piece())
             turn = 1 - turn 
-            print(state.check_finished())
 
-            
-        return  turn    
+        return winner
+
+          
+          
     def expand(self,state : Quarto , phase : bool, player: bool,piece : int) -> None: 
-        LOG.debug(f"Expanding state {state}")
+        logging.debug(f"Expanding state {state}")
         
         state_hash = self.hashing(state,player,phase,piece) 
         self.states_to_nodes[state_hash] = self.Node(state,phase,player,piece) 
         self.history.add(state_hash)
                 
-    def update(self,outcome: int )-> None:
+    def update(self,outcome: int , turn : bool)-> None:
         for history_step in self.history: 
-            if outcome == 0 : 
+            if outcome == 0 and self.states_to_nodes[history_step].player_turn == turn : 
                 self.states_to_nodes[history_step].Q +=1 
             self.states_to_nodes[history_step].N +=1
-        self.walked = set()
+        self.history = set()
                        
     def iterate(self,state: Quarto, phase: bool, player : bool)-> None : 
         start_time = time.process_time()
         num_rollouts = 0
         
-        LOG.debug(f"New iteration from state {state}")
-        # LOG.debug(f" * States: {self.states_to_nodes}")
-        LOG.debug(f" * Nb States: {len(self.states_to_nodes)}")
+        logging.debug(f"New iteration from state {state}")
+        # logging.debug(f" * States: {self.states_to_nodes}")
+        logging.debug(f" * Nb States: {len(self.states_to_nodes)}")
         while time.process_time() - start_time < self.time_limit: 
             if self.hashing(state,player,phase,-1) not in self.states_to_nodes: 
                 self.expand(state,phase,player,-1)   
@@ -205,14 +202,15 @@ class MCTS(Player):
             explored_state,new_player ,new_phase,piece = self.explore(state,player, phase,-1)    
             
             self.expand(explored_state,new_phase,new_player,piece)
-            #print(explored_state.get_board_status())
+            #print(new_phase, new_player,explored_state.get_board_status())
             if new_phase :       
-                outcome = self.roll_out_choose_piece(explored_state, RandomPlayer,1-int(new_player))
+                outcome = self.roll_out_choose_piece(explored_state, RandomPlayer)
             else : 
-                outcome = self.roll_out_place_piece(explored_state , RandomPlayer,1-int(new_player))
-            self.update(outcome)
+                outcome = self.roll_out_place_piece(explored_state , RandomPlayer)
+            #print(outcome)
+            self.update(outcome,new_player)
             num_rollouts+= 1 
-            print(num_rollouts)
+
         self.run_time = time.process_time() - start_time 
         self.num_rollouts = num_rollouts
     @staticmethod
@@ -234,17 +232,28 @@ class MCTS(Player):
         node = self.states_to_nodes[state_hash]
         for move , state_node_hash in node.children.items(): 
             if state_node_hash is None : 
-                LOG.debug(f"unexplored move {move}")
+                logging.debug(f"unexplored move {move}")
                 continue 
             state_node = self.states_to_nodes[state_node_hash]
-            Q = state_node.Q 
+            #Q = state_node.Q 
             N = state_node.N 
-            win_ratio = Q/N 
-            scores[move] = win_ratio
-        LOG.debug(f"Actions : {scores}")
-        return max(scores , key = lambda k : scores[k])
+            #win_ratio = Q/N 
+            scores[move] = N
+        logging.debug(f"Actions : {scores}")
+        #buffer = dict()
+        #i = 0
+        #print(len(self.states_to_nodes))
+        #for x , y in self.states_to_nodes.items(): 
+        #    if i >15 : 
+        #        buffer[x] = y
+        #    i+=1
+        #self.states_to_nodes = buffer
         
-
+        print(len(self.states_to_nodes))
+        self.states_to_nodes = dict()
+        return max(scores , key = lambda k : scores[k])
+         
+ 
     def choose_piece(self)-> int: 
         phase = True 
         player = True
@@ -252,8 +261,8 @@ class MCTS(Player):
         state = deepcopy(self.quarto_state)
         
         self.iterate(state,phase,player) 
-        LOG.debug(f"states_to_nodes : {self.states_to_nodes}")
-        LOG.debug(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
+        logging.debug(f"states_to_nodes : {self.states_to_nodes}")
+        print(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
         return   self.choose_best_move(state,True)  
         
 
@@ -262,10 +271,10 @@ class MCTS(Player):
         phase = False 
         player = True
         state = deepcopy(self.quarto_state)
-        print(state.get_board_status())
+
         self.iterate(state,phase , player)
-        LOG.debug(f"states_to_nodes : {self.states_to_nodes}")
-        LOG.debug(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
+        logging.debug(f"states_to_nodes : {self.states_to_nodes}")
+        print(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
         return   self.choose_best_move(state, False)      
         
     

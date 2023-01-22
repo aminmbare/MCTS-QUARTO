@@ -5,7 +5,7 @@ import logging
 import argparse
 import random
 import quarto
-from quarto import Myplayer
+from quarto import  Myplayer, Ma
 
 class RandomPlayer(quarto.Player):
     """Random player"""
@@ -22,10 +22,29 @@ class RandomPlayer(quarto.Player):
 
 def main():
     game = quarto.Quarto()
-    mcts = Myplayer.MCTS
-    game.set_players((mcts(game), RandomPlayer(game)))
-    winner = game.run()
-    logging.warning(f"main: Winner: player {winner}")
+    mcts_1 = Myplayer.MCTS
+    mcts_2 = Ma.MCTS
+    Matches = 10
+    game.set_players((  RandomPlayer(game), mcts_2(game)))
+    wins = 0 
+    draws = 0 
+    loss = 0
+    #winner = game.run()
+    #logging.warning(f"main: Winner: player {winner}")
+    for _ in range(Matches): 
+        logging.warning(f"-----MATCH {_+1}-----")
+        winner = game.run()
+        if winner ==1 : 
+            wins+= 1 
+        if winner == 0 : 
+            loss+=1
+        if winner < 0 : 
+            draws +=1
+        game.reset()
+        logging.warning(f"main: Winner: player {wins}, Draws {draws}, Loss {loss} ")
+
+
+    logging.warning(f"main: Winner: player {wins}, Draws {draws}, Loss {loss} ")
 
 
 if __name__ == '__main__':
@@ -45,5 +64,5 @@ if __name__ == '__main__':
         logging.getLogger().setLevel(level=logging.INFO)
     elif args.verbose == 2:
         logging.getLogger().setLevel(level=logging.DEBUG)
-
+        
     main()

@@ -93,12 +93,12 @@ class Quarto(object):
         Place piece in coordinates (x, y). Returns true on success
         '''
         if self.__placeable(x, y):
-            self.__board[y, x] = self.selected_piece_index
+            self.__board[x, y] = self.selected_piece_index
             return True
         return False
 
     def __placeable(self, x: int, y: int) -> bool:
-        return not (y < 0 or x < 0 or x > 3 or y > 3 or self.__board[y, x] >= 0)
+        return not (y < 0 or x < 0 or x > 3 or y > 3 or self.__board[x, y] >= 0)
 
     def print(self):
         '''
@@ -301,11 +301,14 @@ class Quarto(object):
         while winner < 0 and not self.check_finished():
             self.print()
             piece_ok = False
+            print(f"Player {self.__current_player} : Selection Phase")
             while not piece_ok:
-                piece_ok = self.select(self.__players[self.__current_player].choose_piece())
+                piece = self.__players[self.__current_player].choose_piece()
+                piece_ok = self.select(piece)
             piece_ok = False
             self.__current_player = (self.__current_player + 1) % self.MAX_PLAYERS
             self.print()
+            print(f"Player {self.__current_player} : Placing Phase")
             while not piece_ok:
                 x, y = self.__players[self.__current_player].place_piece()
                 piece_ok = self.place(x, y)
