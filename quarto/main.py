@@ -19,13 +19,21 @@ class RandomPlayer(quarto.Player):
     def place_piece(self) -> tuple[int, int]:
         return random.randint(0, 3), random.randint(0, 3)
 
-
+class HumanPlayer(quarto.Player): 
+    def ___init__(self, quarto : quarto.Quarto)-> None : 
+        super().__init__(quarto)
+    def choose_piece(self)-> int :
+        return int(input("Please enter the piece you want to select: "))
+    def place_piece(self)  -> tuple[int, int]:
+        x = int(input("x : "))
+        y = int(input("y : "))
+        return (x,y)
 def main():
     game = quarto.Quarto()
     mcts_1 = Myplayer.MCTS
     mcts_2 = Ma.MCTS
-    Matches = 10
-    game.set_players((  RandomPlayer(game), mcts_2(game)))
+    Matches = 30
+    game.set_players((  RandomPlayer(game),  mcts_2(game)))
     wins = 0 
     draws = 0 
     loss = 0
