@@ -287,10 +287,14 @@ class Quarto(object):
         '''
         Check who is the loser
         '''
-        for row in self.__board:
-            for elem in row:
-                if elem == -1:
-                    return False
+        
+        if len(self.__board[self.__board == -1]) == 0: 
+            return True
+        return False 
+        #for row in self.__board:
+        #    for elem in row:
+        #        if elem == -1:
+        #            return False
         return True
 
     def run(self) -> int:

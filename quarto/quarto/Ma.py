@@ -86,7 +86,7 @@ class MCTS(Player):
                 CurrState.select(node.move)
             if node.N == 0:
                 new_player , phase =self.get_player_and_phase(player , phase )
-                return node, CurrState, phase
+                return node, CurrState, phase, new_player
             player , phase =self.get_player_and_phase(player , phase )
             #new_player , new_phase =self.get_player_and_phase(player , phase )
         if self.expand(node, state,phase,player):
@@ -97,7 +97,7 @@ class MCTS(Player):
                 CurrState.select(node.move)
         new_player , new_phase =self.get_player_and_phase(player , phase)
         #print(new_player)
-        return node, CurrState,new_phase
+        return node, CurrState,new_phase, new_player
     @staticmethod
     def get_player_and_phase(player , phase)-> tuple:
         return player ^ phase ,not  phase 
@@ -127,11 +127,12 @@ class MCTS(Player):
 
         # For the current player, not the next player
         #reward = 0 if outcome == turn else 1
-        if outcome  == 1   :
+        if outcome  == 1 :
             winner = node.player
-        else  : 
+        else : 
             winner = not node.player 
-      
+        if outcome == -1 : 
+            winner = None
         while node is not None:
             node.N += 1
             if  node.player == winner : 
@@ -146,19 +147,20 @@ class MCTS(Player):
     
     def search(self,state: Quarto, phase : bool,player : True  ): 
         start_time = time.process_time()
-        #random_player = RandomPlayer
+        random_player = RandomPlayer
         num_rollouts = 0
-       
         while time.process_time() - start_time < self.time_limit:
-            
-            node, new_state , new_phase = self.select_node(state,phase,player)
-            #print(node.player , node.phase , new_phase)
-            
-            outcome = self.roll_out(new_state,RandomPlayer, new_phase)
+ 
+            node, new_state , new_phase, new_player = self.select_node(state,phase,player)
+
+            if new_phase :                    
+                outcome = self.roll_out_choose_piece(new_state,RandomPlayer)         
+            else :          
+                outcome = self.roll_out_place_piece(new_state,RandomPlayer)
             self.back_propagate(node, outcome)
             num_rollouts += 1
         run_time = time.process_time() - start_time
-        #print("AVERAGE 1: ",np.average(timing_1),  " AVERAGE 2: ",np.average(timing_2),  " AVERAGE 3: ",np.average(timing_3))
+
         self.run_time = run_time
         self.num_rollouts = num_rollouts
                                      
@@ -203,54 +205,14 @@ class MCTS(Player):
         return move
     
     
-    #def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod)-> int : 
-    #    player = Random_player(state)
-    #    winner = -1
-    #    turn = 0
-    #    if state.check_finished(): 
-    #        return 1-turn 
-    #    while winner < 0 and  not state.check_finished():
-    #        piece_ok = False
-    #        while not piece_ok:
-    #            piece_ok = state.select(player.choose_piece())
-    #        piece_ok = False
-    #        turn =  1 - turn 
-    #        while not piece_ok:
-    #            x, y = player.place_piece()
-    #            piece_ok = state.place(x, y)
-    #        winner = state.check_winner()
-    #        if winner != -1: 
-    #            winner = turn 
-    #            break    
-    #        
-    #    return winner
-        
-    
-    
-    def roll_out(self,state:Quarto, Random_player : classmethod, phase : bool)-> int : 
-        player = Random_player(state)
-        winner = -1
-        if phase :
-            turn = 1
-            if state.check_winner(): 
-                return turn 
-        else : 
-            turn = 0
-        board = state.get_board_status()
-        if len(board[board != -1]) > 6 and not phase  :
-            for i,j in zip(np.where(board==-1)[0],np.where(board==-1)[1]): 
-                Test_state = deepcopy(state)
-                Test_state.place(i,j)
-                if Test_state.check_winner():
-                    return turn 
-        if  not phase : 
-            piece_ok = False
-            while not piece_ok:
-                piece_ok = state.place(*player.place_piece())           
-            
-        depth = 0              
-        
-        while winner < 0 and  not state.check_finished() and depth < 6:
+    def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod)-> int : 
+       player = Random_player(state)
+       winner = -1
+       turn = 1
+       depth = 0
+       #if self.winning_move(state , move): 
+       #    return  turn    
+       while winner < 0 and  not state.check_finished() and depth < 5:
            piece_ok = False
            while not piece_ok:
                piece_ok = state.select(player.choose_piece())
@@ -259,14 +221,120 @@ class MCTS(Player):
            while not piece_ok:
                x, y = player.place_piece()
                piece_ok = state.place(x, y)
+           depth +=1
            winner = state.check_winner()
            if winner != -1: 
                winner = turn 
                break    
-           depth +=1
+           
+       return winner
+       
+    def roll_out_place_piece(self,state:Quarto, Random_player : classmethod)-> int : 
+        player = Random_player(state)
+        winner = -1
+        turn = 1
+        #board = state.get_board_status()
+        #if len(board[board != -1]) >= 3 and  player:
+        #    if self.check_board(state,move): 
+        #           return turn                  
+        depth = 0
+        while winner < 0 and  not state.check_finished() and depth < 5:
+           piece_ok = False       
+           while not piece_ok:    
+               x, y = player.place_piece()
+               piece_ok = state.place(x, y) 
+           depth +=1 
+           winner = state.check_winner() 
+           if winner != -1 :                  
+               winner = turn 
+               break     
+           if not state.check_finished():
+               break      
+           piece_ok = False     
+           while not piece_ok:
+               piece_ok = state.select(player.choose_piece())
+           turn = 1 - turn             
         return winner
+    #def roll_out(self,state : Quarto , Random_player : classmethod , phase : bool,move)-> int : 
+    #    player = Random_player(state)
+    #    winner = -1
+    #    if phase :
+    #        turn = 1
+    #    else :             
+    #        turn = 0
+    #        if  self.check_board(state,move): 
+    #            return 0 
+    #    depth = 0
+    #    if not phase  : 
+    #        piece_ok = False
+    #        while not piece_ok:
+    #            x, y = player.place_piece()
+    #            piece_ok = state.place(x, y) 
+    #    while winner < 0 and  not state.check_finished() and depth < 5:
+    #        piece_ok = False
+    #        while not piece_ok:
+    #            piece_ok = state.select(player.choose_piece())
+    #        piece_ok = False
+    #        turn =  1 - turn 
+    #        while not piece_ok:
+    #            x, y = player.place_piece()
+    #            piece_ok = state.place(x, y)
+    #        depth +=1
+    #        winner = state.check_winner()
+    #        if winner != -1: 
+    #            winner = turn 
+    #            break    
+    #        
+    #    return winner
+    @staticmethod
+    def winning_move(state :Quarto,move : tuple)-> bool : 
+        board = state.get_board_status()
+        row = board[move[0]]
+        pieces = row != -1 
+        
+        if sum(pieces) ==4 : 
+            if reduce(and_, row) != 0 or reduce(and_, row ^ 15) != 0:
+                   return True 
+        column = board[:,move[1]]
+        pieces = column != -1
+        
+        if sum(pieces) == 4 : 
+            if reduce(and_ , column) != 0 or reduce(and_ , column ^ 15) != 0 : 
+                return True 
+        
+        if (move[0] == move[1]) or (3-move[0] ==  move[1]):
+            for diag in [board.diagonal() , board[::-1].diagonal()]: 
+                pieces = diag != -1
+                if sum(pieces) == 4 : 
+                    if reduce(and_, diag)!= 0 or reduce(and_ , diag ^15 ) != 0 : 
+                        return True  
+        return False         
+    @staticmethod 
+    def check_board(state: Quarto, move : int )-> bool : 
+        board = state.get_board_status()
+        for row in board: 
+            pieces = row != -1
+            if sum(pieces)==3: 
+                    row[np.where(pieces == False)] = move 
+                    if reduce(and_, row) != 0 or reduce(and_, row ^ 15) != 0:
+                        return True
+        for col in board.T : 
+
+            pieces = col != -1 
+            if sum(pieces) == 3: 
+                col[np.where(pieces == False)] = move
+                if reduce(and_, col) != 0 or reduce(and_, col ^ 15) != 0:  
+                   return  True
+        for diag in [board.diagonal(), board[::-1].diagonal()]: 
+            diag = np.array(diag)
+            pieces = diag != -1 
+            if sum(pieces)==3 : 
+                diag[np.where(pieces == False)] = move
+                if reduce(and_,diag) !=0 or reduce(and_,diag^15) != 0 : 
+                    return True
+        return False           
     #@staticmethod 
-    #def roll_out(state: Quarto, phase : bool)-> int: 
+    #def check_board(state: Quarto)-> int: 
     #    score = 0
     #    board = state.get_board_status()
     #    for row in board: 
@@ -284,12 +352,12 @@ class MCTS(Player):
     #        if sum(pieces)==3 : 
     #            if reduce(and_,diag[pieces]) !=0 or reduce(and_,diag[pieces]^15) != 0 : 
     #                score +=1
-    #    return score  if  not phase else -score          
-       
+    #    return score           
+        
     #@cache 
     #def alpha_beta(self,state : Quarto ,alpha : float , beta : float , MaximizingPlayer : bool , phase : bool,depth : int):
     #    
-    #    if depth >=  3 and phase :
+    #    if depth >=  4 and phase :
     #        return self.check_board(state) if MaximizingPlayer else -self.check_board(state)
     #         
     #    if phase : 
@@ -335,14 +403,16 @@ class MCTS(Player):
     #                break 
     #        return min(scores)
     #    
-    #        #
-    #        # s = time.process_time()
-    #        #if new_phase :                    
-    #        #    start_1 = time.process_time()
-    #        #    outcome = self.roll_out_choose_piece(new_state,RandomPlayer)
-            #    timing_1.append(time.process_time()- start_1)
-            #else :          
-            #    start_2 = time.process_time()
-            #    outcome = self.roll_out_place_piece(new_state,RandomPlayer)
-            #    timing_2.append(time.process_time()- start_2)
-            #timing_3.append(time.process_time()- s)
+           # node, new_state , new_phase = self.select_node(state,phase,player)
+           # #print(node.player , node.phase , new_phase)
+           # #s = time.process_time()
+           # if new_phase :                    
+           #     #start_1 = time.process_time()
+           #     outcome = self.roll_out_choose_piece(new_state,RandomPlayer,node.player)
+           #     #timing_1.append(time.process_time()- start_1)
+           # else :          
+           #     #start_2 = time.process_time()
+           #     outcome = self.roll_out_place_piece(new_state,RandomPlayer,node.player)
+           #     #timing_2.append(time.process_time()- start_2)
+           # #timing_3.append(time.process_time()- s)
+           # #outcome = self.alpha_beta(new_state, -np.inf , np.inf ,True ,new_phase , 0)
