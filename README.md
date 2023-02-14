@@ -38,8 +38,17 @@ While uniformly random move choices in the roll-out are sufficient to guarantee 
 | First Player             | Second Player             |   Results (100 matches)  |
 | ------------------------ |:-------------------------:| ------------------------:|
 |  Random Player           |  MCTS (Random roll-out)   |           0-100          |  
-|  Random Player           |  MCTS (Random roll-out)   |           100-0          |  
+|  MCTS (Random roll-out)  |   Random Player           |           100-0          |  
 |  MCTS (MinMax roll-out)  |  MCTS (Random roll-out)   |           11-89          |
 |  MCTS (Random roll-out)  |  MCTS (MinMax roll-out)   |           91-9           |  
  
+## ACKNOWLEDGEMENT
+
+https://www.harrycodes.com/blog/monte-carlo-tree-search
+
+MCTS-Minimax Hybrids Hendrik Baier and Mark H. M. Winands, Member, IEEE
+
+
+
+
 
