@@ -9,14 +9,6 @@ from functools import reduce , cache
 import matplotlib.pyplot as plt
 import random
 C = sqrt(2)
-
-def get_available_positions(state: Quarto)->list: 
-    moves = list()
-    for i, row in enumerate(state.get_board_status()): 
-        for j,element in enumerate(row): 
-            if element == -1 : 
-                moves.append((i,j))     
-    return moves            
 class Node: 
     def __init__(self,move,parent, phase : bool, player : bool):
         self.move = move 
@@ -80,18 +72,31 @@ class MCTS_MINMAX(Player):
             return node, CurrState, not phase
         else : 
             return node , CurrState , phase 
-    
+    '''SINCE THE PHASE AND PLAYER ARE REPRESENTED BY BOOLEANS
+    THIS METHODS IS AN OPERATOR THAT GIVES US THE RIGHT PLAYING AND PHASE ORDER
+    THE PHASE IS ALWAYS INVERTED
+    HOWEVER SINCE A PLAYER COULD DO PLACING AND SELECTION ONE AFTER AN OTHER
+    PLAYER(t) = PLAYER(t-1) XOR PHASE(t-1)'''
+
     @staticmethod
     def get_player_and_phase(player , phase)-> tuple:
         return player ^ phase ,not  phase 
-
+    '''METHODS THAT FINDS THE ALL AVAILABLE POSITIONS ON THE BOARD'''
+    @staticmethod
+    def get_available_positions(state: Quarto)->list: 
+        moves = list()
+        for i, row in enumerate(state.get_board_status()): 
+            for j,element in enumerate(row): 
+                if element == -1 : 
+                    moves.append((i,j))     
+        return moves            
     def scores(self): 
         max_value = max(self.root.children.values(), key=lambda n: n.N).N
         max_nodes = [n for n in self.root.children.values() if n.N == max_value]
         best_child = random.choice(max_nodes)
         return best_child.move
     
-    ## EXPANSION METHOD 
+    ## EXPANSION PHASE
     def expand(self, parent: Node, state: Quarto,phase : bool , player : bool) -> bool:
         
         if state.check_winner() !=-1  or state.check_finished() :
@@ -128,7 +133,7 @@ class MCTS_MINMAX(Player):
             node = node.parent
     
     
-    
+    '''SEARCH METHOD ( NODE SELECTION +EXPANSION + ROLLOUT + BACKPORPAGATION )'''
     def search(self,state: Quarto, phase : bool,player : True  ): 
         start_time = time.process_time()
         num_rollouts = 0
@@ -148,10 +153,9 @@ class MCTS_MINMAX(Player):
         max_value = max(self.root.children.values(), key=lambda n: n.N).N
         max_nodes = [n for n in self.root.children.values() if n.N == max_value]
         best_child = random.choice(max_nodes)
-        #for node in self.root.children.values(): 
-        #    print("NODE",node.move, node.N, node.Q, node.value())
         return best_child.move 
     
+    '''GET AVAILABLE PIECES TO SELECT'''
     def get_available_pieces(self,state:Quarto)->set:
         pieces = set(range(16))
         pieces_on_board = set()
@@ -182,8 +186,8 @@ class MCTS_MINMAX(Player):
         return move
     
    
-    ''' SAME AS (BOUND METHOD) , HOWEVER THIS APPLIES TO THE NODES CONNECTED TO THE ROOT NODE'''
-    ''' THE ONLY DIFFERENCE IS THAT THIS METHOD ELIMINATES MOVES (SELECTION PHASE , SO PIECES TO SELECTED), FROM OUR SEARCH SPACE'''
+    '''KNOWLEDGE BASED APPROACH'''
+    ''' FIND THE PIECES THAT COULD LEAD TO A FINISHING MOVE THUS LOSING THE GAME , HOWEVER THIS APPLIES TO THE NODES CONNECTED TO THE ROOT NODE'''
     '''  IF ALL AVAILABLE PIECES COULD LEAD TO A ¨POTENTIAL LOSS , JUST CANCEL  THIS PROCESS AND WISH THAT THE OPPONENT MAKES A MISTAKE '''
     def __prior_knowledge(self,state:Quarto)-> None: 
         available_pieces = self.get_available_pieces(state)
@@ -194,6 +198,7 @@ class MCTS_MINMAX(Player):
                 self.forbidden_pieces.append(piece)
         if len(self.forbidden_pieces) == len(available_pieces): 
             self.forbidden_pieces = list()
+    '''AVOID DOING MCTS IF WE HAVE THE OPPORTUNITY TO PERFORM A GAME FINISHED MOVE'''
     def __finishing_move(self, state :Quarto)->tuple[bool,tuple]: 
         board = state.get_board_status()
         available_positions =  [(i,j)   for i,j in zip(np.where(board == -1)[0],np.where(board == -1)[1]) ]
@@ -222,7 +227,7 @@ class MCTS_MINMAX(Player):
         print(f" time : {self.run_time}, roll outs : {self.num_rollouts}")
        
         return move
-    
+    '''METHOD FINDS WHETHER THE GAME IS FINISHED AFTER A PLAYER HAS PLACED A PIECE ON THE BOARD'''
     @staticmethod
     def heuristic_1(state :Quarto,move : tuple)-> bool : 
         board = state.get_board_status()
@@ -246,6 +251,7 @@ class MCTS_MINMAX(Player):
                     if reduce(and_, diag)!= 0 or reduce(and_ , diag ^15 ) != 0 : 
                         return True  
         return False         
+    '''THIS METHOD TAKES TAKES THE BOARD STATUS AND A PIECE, TO FIND WHETHER THE PIECE SELECTED COULD LEAD TO FINISHING MOVE'''
     @staticmethod 
     def heuristic_2(state: Quarto, move : int )-> bool : 
         board = state.get_board_status()
@@ -273,28 +279,10 @@ class MCTS_MINMAX(Player):
                 if reduce(and_,diag_temp) !=0 or reduce(and_,diag_temp^15) != 0 : 
                     return True
         return False           
-    #@staticmethod  
-    #def heuristic_1(state: Quarto)-> int: 
-    #    score = 0
-    #    board = state.get_board_status()
-    #    for row in board: 
-    #        pieces = row != -1
-    #        if sum(pieces)==3: 
-    #                if reduce(and_, row[pieces]) != 0 or reduce(and_, row[pieces] ^ 15) != 0:
-    #                    score += 1   
-    #    for col in board.T : 
-    #        pieces = col != -1 
-    #        if sum(pieces) == 3: 
-    #            if reduce(and_, col[pieces]) != 0 or reduce(and_, col[pieces] ^ 15) != 0:  
-    #                score +=1
-    #    for diag in [board.diagonal(), board[::-1].diagonal()]: 
-    #        pieces = diag != -1 
-    #        if sum(pieces)==3 : 
-    #            if reduce(and_,diag[pieces]) !=0 or reduce(and_,diag[pieces]^15) != 0 : 
-    #                score +=1
-    #    return score           
-        
-
+   
+    '''MIN-MAX WITH ALPHA BETA PRUNING'''
+    '''Due to the low depth of our search for computational reasons , min-max can only find forced wins and avoid forced losses, if
+    possible, within its search horizon. '''
     def alpha_beta(self,state : Quarto ,alpha : float , beta : float , MaximizingPlayer : bool , phase : bool,depth : int, move) :
         
         if depth >=  3 and  not phase :
@@ -314,7 +302,7 @@ class MCTS_MINMAX(Player):
         
         scores = list()  
         if MaximizingPlayer : 
-            player = MaximizingPlayer ^ phase 
+            player = MaximizingPlayer ^  phase 
             for i in moves : 
                 temp_state = deepcopy(state)   
                 if phase :

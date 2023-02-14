@@ -22,13 +22,6 @@ class RandomPlayer(Player):
     def place_piece(self) -> tuple[int, int]:
         return random.randint(0, 3), random.randint(0, 3)
 
-def get_available_positions(state: Quarto)->list: 
-    moves = list()
-    for i, row in enumerate(state.get_board_status()): 
-        for j,element in enumerate(row): 
-            if element == -1 : 
-                moves.append((i,j))     
-    return moves            
 class Node: 
     def __init__(self,move,parent, phase : bool, player : bool):
         self.move = move 
@@ -61,7 +54,7 @@ class MCTS_VANILLA(Player):
         self.num_rollouts = 0 
         self.forbidden_pieces = list()
     
-    ## SEARCHING THROUGH THE TREE AND SELECT NODE FOR ROLL-OUT PHASE 
+    ## SEARCHING THROUGH THE TREE AND SELECT NODE FOR ROLL-OUT PHASE OR EXPANSION
     def select_node(self,state : Quarto,phase : bool , player : bool) -> tuple:
         node = self.root
         CurrState = deepcopy(state)
@@ -96,14 +89,21 @@ class MCTS_VANILLA(Player):
     @staticmethod
     def get_player_and_phase(player , phase)-> tuple:
         return player ^ phase ,not  phase 
-    
+    '''METHODS THAT FINDS THE ALL AVAILABLE POSITIONS ON THE BOARD'''
+    def get_available_positions(state: Quarto)->list: 
+        moves = list()
+        for i, row in enumerate(state.get_board_status()): 
+            for j,element in enumerate(row): 
+                if element == -1 : 
+                    moves.append((i,j))     
+        return moves            
     def scores(self): 
         max_value = max(self.root.children.values(), key=lambda n: n.N).N
         max_nodes = [n for n in self.root.children.values() if n.N == max_value]
         best_child = random.choice(max_nodes)
         return best_child.move
     
-    ## EXPANSION METHOD 
+    ## EXPANSION PHASE 
     def expand(self, parent: Node, state: Quarto,phase : bool , player : bool) -> bool:
         
         if state.check_winner() !=-1 or state.check_finished() :
@@ -140,7 +140,7 @@ class MCTS_VANILLA(Player):
             node = node.parent
     
     
-    
+    '''SEARCH METHOD ( NODE SELECTION +EXPANSION + ROLLOUT + BACKPORPAGATION )'''
     def search(self,state: Quarto, phase : bool,player : True  ): 
         start_time = time.process_time()
         num_rollouts = 0
@@ -170,7 +170,7 @@ class MCTS_VANILLA(Player):
         max_nodes = [n for n in self.root.children.values() if n.N == max_value]
         best_child = random.choice(max_nodes)
         return best_child.move 
-    
+    '''GET AVAILABLE PIECES TO SELECT'''
     def get_available_pieces(self,state:Quarto)->set:
         pieces = set(range(16))
         pieces_on_board = set()
@@ -200,9 +200,8 @@ class MCTS_VANILLA(Player):
 
         return move
     
-   
-    ''' SAME AS (BOUND METHOD) , HOWEVER THIS APPLIES TO THE NODES CONNECTED TO THE ROOT NODE'''
-    ''' THE ONLY DIFFERENCE IS THAT THIS METHOD ELIMINATES MOVES (SELECTION PHASE , SO PIECES TO SELECTED), FROM OUR SEARCH SPACE'''
+    '''KNOWLEDGE BASED APPROACH'''
+    ''' FIND THE PIECES THAT COULD LEAD TO A FINISHING MOVE THUS LOSING THE GAME , HOWEVER THIS APPLIES TO THE NODES CONNECTED TO THE ROOT NODE'''
     '''  IF ALL AVAILABLE PIECES COULD LEAD TO A ¨POTENTIAL LOSS , JUST CANCEL  THIS PROCESS AND WISH THAT THE OPPONENT MAKES A MISTAKE '''
     def __prior_knowledge(self,state:Quarto)-> None: 
         available_pieces = self.get_available_pieces(state)
@@ -212,7 +211,7 @@ class MCTS_VANILLA(Player):
                 self.forbidden_pieces.append(piece)
         if len(self.forbidden_pieces) == len(available_pieces): 
             self.forbidden_pieces = list()
-    
+    '''AVOID DOING MCTS IF WE HAVE THE OPPORTUNITY TO PERFORM A GAME FINISHED MOVE'''
     def __finishing_move(self, state :Quarto)->tuple[bool,tuple]: 
         board = state.get_board_status()
         available_positions =  [(i,j)   for i,j in zip(np.where(board == -1)[0],np.where(board == -1)[1]) ]
@@ -242,7 +241,7 @@ class MCTS_VANILLA(Player):
        
         return move
     
-    
+    '''ROLL OUT FOR PIECE SELECTION PHASE'''
     def roll_out_choose_piece(self,state:Quarto, Random_player : classmethod,move:tuple )-> int : 
         player = Random_player(state)
         winner = -1
@@ -267,7 +266,7 @@ class MCTS_VANILLA(Player):
                 break    
                     
         return winner
-       
+    '''ROLL OUT FOR PIECE PLACING PHASE'''   
     def roll_out_place_piece(self,state:Quarto, Random_player : classmethod)-> int: 
         player = Random_player(state)
         winner = -1
@@ -291,7 +290,7 @@ class MCTS_VANILLA(Player):
                piece_ok = state.select(player.choose_piece())
            turn = 1 - turn             
         return winner
-    
+    '''METHOD FINDS WHETHER THE GAME IS FINISHED AFTER A PLAYER HAS PLACED A PIECE ON THE BOARD'''
     @staticmethod
     def heuristic_1(state :Quarto,move : tuple)-> bool : 
         board = state.get_board_status()
@@ -315,6 +314,7 @@ class MCTS_VANILLA(Player):
                     if reduce(and_, diag)!= 0 or reduce(and_ , diag ^15 ) != 0 : 
                         return True  
         return False         
+    '''THIS METHOD TAKES TAKES THE BOARD STATUS AND A PIECE, TO FIND WHETHER THE PIECE SELECTED COULD LEAD TO FINISHING MOVE'''
     @staticmethod 
     def heuristic_2(state: Quarto, move : int )-> bool : 
         board = state.get_board_status()
