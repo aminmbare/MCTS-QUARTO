@@ -5,7 +5,8 @@ import logging
 import argparse
 import random
 import quarto
-from quarto import  Myplayer, Ma
+from quarto import  MCTS_VANILLA , MCTS_MINMAX
+
 
 class RandomPlayer(quarto.Player):
     """Random player"""
@@ -30,10 +31,10 @@ class HumanPlayer(quarto.Player):
         return (x,y)
 def main():
     game = quarto.Quarto()
-    mcts_1 = Myplayer.MCTS
-    mcts_2 = Ma.MCTS
-    Matches = 30
-    game.set_players((  RandomPlayer(game),  mcts_2(game)))
+    mcts_1 = MCTS_MINMAX.MCTS_MINMAX
+    mcts_2 = MCTS_VANILLA.MCTS_VANILLA
+    Matches = 10
+    game.set_players(( mcts_2(game),  mcts_1(game)))
     wins = 0 
     draws = 0 
     loss = 0
