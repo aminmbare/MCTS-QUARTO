@@ -26,7 +26,7 @@ Domain knowledge specific to the current game can be exploited in the tree to fi
 
 ### RANDOM ROLL-OUT
 
-we are simply simulating through a random game starting from the given state in the input.But instead of simulated the whole game until someone wins or a draw. We stop after a predefined amount of moves, this is defined by the variable \texttt{depth} . 
+we are simply simulating through a random game starting from the given state in the input.But instead of simulated the whole game until someone wins or a draw. We stop after a predefined amount of moves, this is defined by the variable `depth` . 
 
 ### MIN-MAX ROLL-OUT
 
