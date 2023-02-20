@@ -20,7 +20,7 @@ Domain knowledge specific to the current game can be exploited in the tree to fi
 
 •  A second approach could be, during the expansion (for the selection phase) of first layer's node (the node that we will base our move on) we will limit the number of moves that could be taken during expansion , all pieces that could lead to game finishing moves during the next placing phase , wouldn't be considered. However if all available pieces could lead to game ending , we just consider them all during the expansion and wish that the opponent makes a mistake during the placing phase. 
 
-• if there is a chance to make an immediate move that will guarantee a move . We perform straight the respective move without even performing a Monte Carlo Tree search. This is done through .
+• if there is a chance to make an immediate move that will guarantee a win . We perform straight the respective move without even performing a Monte Carlo Tree search. This is done through .
 
 ## ROLL-OUT 
 
