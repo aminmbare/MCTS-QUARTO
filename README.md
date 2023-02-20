@@ -14,7 +14,7 @@ To account for the balance of exploration vs exploitation, we will use the Upper
 
 MCTS search can take many iterations to converge to a good solution, which can bean issue for more general applications that are difficult to optimise. For example, the best Go implementations can require millions of play-outs in conjunction with domain specific optimisations and enhancements to make expert moves. Luckily, the performance of the algorithm can be significantly improved using a number of techniques. 
 
-Domain knowledge specific to the current game can be exploited in the tree to filter out implausible moves or in the simulations to produce heavy playouts that are more similar to playouts that would occur between human opponents. This means that playout results will be more realistic than random simulations and that nodes will require fewer iterationsto yield realistic reward values.//
+Domain knowledge specific to the current game can be exploited in the tree to filter out implausible moves or in the simulations to produce heavy playouts that are more similar to playouts that would occur between human opponents. This means that playout results will be more realistic than random simulations and that nodes will require fewer iterationsto yield realistic reward values.
 
 • First approach could be to bound the tree expansion. For our case we will avoid expanding node that belong to the selection phase if the respective piece to be selected could lead the opponent to make a game finishing move in the placing phase.
 
